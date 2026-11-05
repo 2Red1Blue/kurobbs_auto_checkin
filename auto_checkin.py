@@ -30,29 +30,42 @@ class KurobbsClient:
     USER_SIGN_URL = "https://api.kurobbs.com/user/signIn"
     USER_MINE_URL = "https://api.kurobbs.com/user/mineV2"
 
-    def __init__(self, token: str):
+    # 手机 App 抓到的 token 用 android；网页版（www.kurobbs.com）取到的 token 用 h5。
+    # 两者不通用：来源填错时服务端会拒绝请求。
+    SOURCE_HEADERS = {
+        "android": {"osversion": "Android", "source": "android"},
+        "h5": {"osversion": "h5", "source": "h5"},
+    }
+
+    def __init__(self, token: str, source: str = "android"):
         if not token:
             raise KurobbsClientException("TOKEN is required to call Kurobbs APIs.")
 
+        source_headers = self.SOURCE_HEADERS.get(source)
+        if source_headers is None:
+            raise KurobbsClientException(
+                f"Unsupported token source: {source!r}, "
+                f"expected one of {sorted(self.SOURCE_HEADERS)}."
+            )
+
         self.token = token
+        self.source = source
         self.session = requests.Session()
-        self.session.headers.update(
-            {
-                "osversion": "Android",
-                "devcode": "2fba3859fe9bfe9099f2696b8648c2c6",
-                "countrycode": "CN",
-                "ip": "10.0.2.233",
-                "model": "2211133C",
-                "source": "android",
-                "lang": "zh-Hans",
-                "version": "1.0.9",
-                "versioncode": "1090",
-                "token": self.token,
-                "content-type": "application/x-www-form-urlencoded; charset=utf-8",
-                "accept-encoding": "gzip",
-                "user-agent": "okhttp/3.10.0",
-            }
-        )
+        headers = {
+            "devcode": "2fba3859fe9bfe9099f2696b8648c2c6",
+            "countrycode": "CN",
+            "ip": "10.0.2.233",
+            "model": "2211133C",
+            "lang": "zh-Hans",
+            "version": "1.0.9",
+            "versioncode": "1090",
+            "token": self.token,
+            "content-type": "application/x-www-form-urlencoded; charset=utf-8",
+            "accept-encoding": "gzip",
+            "user-agent": "okhttp/3.10.0",
+        }
+        headers.update(source_headers)
+        self.session.headers.update(headers)
         self.result: Dict[str, str] = {}
         self.exceptions: List[Exception] = []
 
@@ -82,7 +95,9 @@ class KurobbsClient:
         """Get mine info."""
         res = self._post(self.USER_MINE_URL, {"type": type})
         if not res.data:
-            raise KurobbsClientException("User info is missing in response.")
+            raise KurobbsClientException(
+                f"无法获取用户信息，TOKEN 可能已失效或来源不匹配（{res.msg}）"
+            )
         return res.data
 
     def get_user_game_list(self, user_id: int) -> Dict[str, Any]:
@@ -118,11 +133,21 @@ class KurobbsClient:
         """Perform the sign-in operation."""
         return self._post(self.USER_SIGN_URL, {"gameId": 2})
 
+    # 服务端在「今天已经签过」时返回 code=1511 / msg=请勿重复签到，这不算失败。
+    ALREADY_SIGNED_CODES = {1511}
+    ALREADY_SIGNED_HINT = "请勿重复签到"
+
+    def _is_already_signed(self, resp: Response) -> bool:
+        return resp.code in self.ALREADY_SIGNED_CODES or self.ALREADY_SIGNED_HINT in (
+            resp.msg or ""
+        )
+
     def _process_sign_action(
         self,
         action_name: str,
         action_method: Callable[[], Response],
         success_message: str,
+        already_message: str,
         failure_message: str,
     ):
         """Handle the common logic for sign-in actions."""
@@ -130,6 +155,9 @@ class KurobbsClient:
         if resp.success:
             self.result[action_name] = success_message
             logger.info("{} -> {}", action_name, success_message)
+        elif self._is_already_signed(resp):
+            self.result[action_name] = already_message
+            logger.info("{} -> {}", action_name, already_message)
         else:
             self.exceptions.append(KurobbsClientException(f"{failure_message}, {resp.msg}"))
 
@@ -139,6 +167,7 @@ class KurobbsClient:
             action_name="checkin",
             action_method=self.checkin,
             success_message="签到奖励签到成功",
+            already_message="签到奖励今日已签到",
             failure_message="签到奖励签到失败",
         )
 
@@ -146,6 +175,7 @@ class KurobbsClient:
             action_name="sign_in",
             action_method=self.sign_in,
             success_message="社区签到成功",
+            already_message="社区签到今日已签到",
             failure_message="社区签到失败",
         )
 
@@ -184,7 +214,7 @@ def main():
     notifier = NotificationService(settings)
 
     try:
-        kurobbs = KurobbsClient(settings.token)
+        kurobbs = KurobbsClient(settings.token, settings.token_source)
         kurobbs.start()
         if kurobbs.msg:
             notifier.send(kurobbs.msg)

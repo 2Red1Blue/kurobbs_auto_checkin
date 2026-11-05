@@ -13,11 +13,11 @@ jobs:
     steps:
       # 1. 检出代码
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       # 2. 设置 Python 环境
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.10'  # 指定 Python 版本
 
@@ -27,12 +27,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt  # 如果有依赖文件
 
-      # 4. 运行脚本并捕获输出
+      # 4. 运行脚本。不要加 continue-on-error，否则签到失败也会显示成功。
       - name: Run auto checkin script
         id: run_script  # 给步骤命名，方便后续引用输出
-        continue-on-error: true
         env:
           TOKEN: ${{ secrets.TOKEN }}
+          # 网页版（www.kurobbs.com）取到的 token 填 h5；手机 App 抓包的填 android
+          TOKEN_SOURCE: ${{ secrets.TOKEN_SOURCE }}
           DEBUG: ${{ secrets.DEBUG }}
           BARK_DEVICE_KEY: ${{ secrets.BARK_DEVICE_KEY }}
           BARK_SERVER_URL: ${{ secrets.BARK_SERVER_URL }}

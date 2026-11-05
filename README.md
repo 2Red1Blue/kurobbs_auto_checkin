@@ -19,6 +19,13 @@ Secrets 中。
 4. 点击 `New repository secret` 按钮。
 5. 在 `Name` 字段中输入 `TOKEN`，在 `Value` 字段中输入你的签到脚本所需的 token。
 6. 点击 `Add secret` 保存。
+7. 再添加一个名为 `TOKEN_SOURCE` 的 secret，值为 token 的来源：
+   - `h5`：网页版 `www.kurobbs.com` 登录后从浏览器取到的 token（**推荐，不用抓包、不用安卓机**）
+   - `android`：手机 App 抓包取到的 token
+
+> 两个来源不通用，填错会一直提示「登录已过期」。网页版 token 取法：浏览器登录 `www.kurobbs.com` →
+> `F12` → Network → 任选一个 `api.kurobbs.com` 的请求 → 请求头里的 `token`；也可以看
+> Application → Local Storage → `auth_token`。网页版 token 一般不会顶掉手机 App 的登录态。
 
 ### 3. 修改脚本（可选）
 
@@ -57,6 +64,9 @@ Secrets 中。
 ## 注意事项
 
 - 确保 `TOKEN` 的安全性，不要将其直接写在代码中。
+- 签到失败会让 Actions 真正失败（变红）。请勿给运行步骤加 `continue-on-error: true`，否则失败会被
+  伪装成成功。
+- 「请勿重复签到」（服务端 `code=1511`）不算失败，脚本会记作「今日已签到」并正常退出。
 - 如果需要修改定时任务的执行时间，可以编辑 [`.github/workflows/auto_sign.yaml`](.github/workflows/auto_checkin.yaml) 文件中的
   `cron` 表达式。
 - 如需查看更详细的排查日志，可以在 Secrets 中添加 `DEBUG=true`，日志会自动对 TOKEN、Bark、Server酱等敏感值进行脱敏。
