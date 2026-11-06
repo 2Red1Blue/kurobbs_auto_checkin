@@ -26,6 +26,10 @@ Secrets 中。
 > 两个来源不通用，填错会一直提示「登录已过期」。网页版 token 取法：浏览器登录 `www.kurobbs.com` →
 > `F12` → Network → 任选一个 `api.kurobbs.com` 的请求 → 请求头里的 `token`；也可以看
 > Application → Local Storage → `auth_token`。网页版 token 一般不会顶掉手机 App 的登录态。
+8. （可选）添加 `FEISHU_WEBHOOK` secret，值为飞书群里「自定义机器人」的 webhook 地址。签到失败时
+   会推送一条提醒（含失败原因和处理步骤），方便及时更换失效的 token。地址本身等同密码，不要写进代码。
+9. （可选）如果该机器人开启了「签名校验」，再添加 `FEISHU_SECRET` secret，值填机器人设置页里的
+   「签名密钥」。不填会收到 `code 19021 sign match fail` 的拒绝。
 
 ### 3. 修改脚本（可选）
 

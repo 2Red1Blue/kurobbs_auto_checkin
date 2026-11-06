@@ -202,6 +202,8 @@ def main():
             os.getenv("BARK_DEVICE_KEY", ""),
             os.getenv("BARK_SERVER_URL", ""),
             os.getenv("SERVER3_SEND_KEY", ""),
+            os.getenv("FEISHU_WEBHOOK", ""),
+            os.getenv("FEISHU_SECRET", ""),
         ],
     )
 
@@ -220,10 +222,11 @@ def main():
             notifier.send(kurobbs.msg)
     except KurobbsClientException as e:
         logger.error(str(e))
-        notifier.send(str(e))
+        notifier.send_failure(str(e))
         sys.exit(1)
     except Exception as e:  # noqa: BLE001
         logger.exception("An unexpected error occurred: {}", e)
+        notifier.send_failure("未预期的错误：{}".format(e))
         sys.exit(1)
 
 

@@ -22,6 +22,8 @@ class Settings:
     bark_device_key: Optional[str] = None
     bark_server_url: Optional[str] = None
     server3_send_key: Optional[str] = None
+    feishu_webhook: Optional[str] = None
+    feishu_secret: Optional[str] = None
 
     @classmethod
     def load(cls) -> "Settings":
@@ -42,8 +44,21 @@ class Settings:
             bark_device_key=os.getenv("BARK_DEVICE_KEY"),
             bark_server_url=os.getenv("BARK_SERVER_URL"),
             server3_send_key=os.getenv("SERVER3_SEND_KEY"),
+            feishu_webhook=os.getenv("FEISHU_WEBHOOK"),
+            feishu_secret=os.getenv("FEISHU_SECRET"),
         )
 
     def sensitive_values(self) -> List[str]:
         """Values that should be redacted from logs."""
-        return [value for value in [self.token, self.bark_device_key, self.bark_server_url, self.server3_send_key] if value]
+        return [
+            value
+            for value in [
+                self.token,
+                self.bark_device_key,
+                self.bark_server_url,
+                self.server3_send_key,
+                self.feishu_webhook,
+                self.feishu_secret,
+            ]
+            if value
+        ]
